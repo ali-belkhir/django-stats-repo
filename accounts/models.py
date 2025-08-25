@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.exceptions import ValidationError
 
 
@@ -19,8 +19,8 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class CustomUser(AbstractBaseUser):
-    QUALITY_CHOICES  = (
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    QUALITY_CHOICES = (
         ("staff", "staff"),
         ("insurer", "insurer"),
     )
@@ -29,6 +29,7 @@ class CustomUser(AbstractBaseUser):
     last_name = models.CharField(max_length=50)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
     user_quality = models.CharField(max_length=20, choices=QUALITY_CHOICES)
     insurance_name = models.CharField(max_length=100, blank=True, null=True)
 
@@ -36,13 +37,12 @@ class CustomUser(AbstractBaseUser):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = CustomUserManager()
-    
+
     def save(self, *args, **kwargs):
-        # if quality is staff, insurance_name should be null
         if self.user_quality == "staff":
             self.insurance_name = None
         super().save(*args, **kwargs)
-    
+
     def clean(self):
         if self.user_quality == "insurer" and not self.insurance_name:
             raise ValidationError("Insurance name is required when quality is insurer.")
